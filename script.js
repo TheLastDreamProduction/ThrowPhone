@@ -2,8 +2,9 @@
 
 let isMeasuring = false;
 let startTime;
-let endTime;
-let startY;
+let startAcceleration;
+let startVelocity = 0;
+let distance = 0;
 
 const startButton = document.getElementById("startButton");
 const scoreDisplay = document.getElementById("score");
@@ -12,36 +13,39 @@ startButton.addEventListener("click", () => {
     if (!isMeasuring) {
         isMeasuring = true;
         startTime = null;
-        startY = null;
+        startAcceleration = null;
+        startVelocity = 0;
+        distance = 0;
         startButton.textContent = "Stop Measurement";
 
-        // Add an event listener to track device motion
+        // Add event listeners for device motion
         window.addEventListener("devicemotion", motionHandler);
     } else {
         isMeasuring = false;
-        endTime = new Date();
         startButton.textContent = "Start Measurement";
 
         // Remove the event listener
         window.removeEventListener("devicemotion", motionHandler);
 
-        if (startTime && startY !== null) {
-            const timeDiff = (endTime - startTime) / 1000; // in seconds
-            const gravity = 9.81; // m/s^2 (Earth's gravity)
-            const accelerationDueToGravity = gravity * (startY / 9.81);
-            const distance = 0.5 * accelerationDueToGravity * Math.pow(timeDiff, 2);
-            scoreDisplay.textContent = distance.toFixed(2) + " meters";
-        }
+        scoreDisplay.textContent = distance.toFixed(2) + " meters";
     }
 });
 
 function motionHandler(event) {
-    if (event.accelerationIncludingGravity) {
-        if (!startTime) {
-            startTime = new Date();
-        }
-        if (startY === null) {
-            startY = event.accelerationIncludingGravity.y;
-        }
+    if (startAcceleration === null) {
+        startAcceleration = event.accelerationIncludingGravity.z;
+        startTime = event.timeStamp;
+        return;
     }
+
+    const currentTime = event.timeStamp;
+    const deltaTime = (currentTime - startTime) / 1000; // Convert to seconds
+    const currentAcceleration = event.accelerationIncludingGravity.z;
+
+    // Calculate the distance using the equation: distance = v0 * t + (1/2) * a * t^2
+    distance += startVelocity * deltaTime + 0.5 * (currentAcceleration + startAcceleration) * Math.pow(deltaTime, 2);
+
+    startAcceleration = currentAcceleration; // Update the starting acceleration for the next calculation
+    startVelocity += currentAcceleration * deltaTime; // Update the velocity
+    startTime = currentTime;
 }
